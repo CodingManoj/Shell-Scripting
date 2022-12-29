@@ -12,7 +12,7 @@ fi
 
 echo -n  "Configuring $COMPONENT repo"
 curl -s -L -o /etc/yum.repos.d/mysql.repo https://raw.githubusercontent.com/stans-robot-project/$COMPONENT/main/$COMPONENT.repo &>> $LOGFILE 
-STAT $?
+stat $?
 
 echo -n "Installing $COMPONENT:"
 yum install mysql-community-server -y &>> $LOGFILE 
