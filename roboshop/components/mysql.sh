@@ -1,53 +1,59 @@
 #!/bin/bash
 
 source components/common.sh
-
 COMPONENT=mysql
-LOGFILE=/tmp/robot.log 
-MYSQL_PASSWORD="RoboShop@1"
+MYSQL_PWD=$1
 
-echo -n "Configuring the $COMPONENT repo: "
-curl -s -L -o /etc/yum.repos.d/mysql.repo https://raw.githubusercontent.com/stans-robot-project/mysql/main/${COMPONENT}.repo &>> ${LOGFILE}
+if [ -z "$1" ]; then
+  echo -e "\e[32m Password argument is needed \e[0m"
+  exit 1
+fi
+
+
+echo -n  "Configuring $COMPONENT repo"
+curl -s -L -o /etc/yum.repos.d/mysql.repo https://raw.githubusercontent.com/stans-robot-project/$COMPONENT/main/$COMPONENT.repo &>> $LOGFILE 
+STAT $?
+
+echo -n "Installing $COMPONENT:"
+yum install mysql-community-server -y &>> $LOGFILE 
 stat $? 
 
-echo -n "Installing $COMPONENT :"
-yum install mysql-community-server -y &>> ${LOGFILE}
-stat $? 
+echo -n "Starting $COMPONENT service: "
+systemctl enable mysqld && systemctl start mysqld
+stat $?
 
-echo -n "Starting ${COMPONENT} : "
-systemctl enable mysqld  &>> ${LOGFILE}
-systemctl start mysqld &>> ${LOGFILE}
-stat $? 
+echo -n "Changing the default password:"
+DEF_ROOT_PASSWORD=$(grep 'A temporary password' /var/log/mysqld.log | awk -F ' ' '{print $NF}')
 
 
-echo -n "Fetching the default root password: "
-DEFAULT_ROOT_PASSWORD=$(sudo grep temp /var/log/mysqld.log | head -n 1 | awk -F " " '{print $NF}')
-stat $? 
+echo show databases | mysql -uroot -p${ROBOSHOP_MYSQL_PASSWORD} &>>$LOG
+if [ $? -ne 0 ]
+then
+  echo "ALTER USER 'root'@'localhost' IDENTIFIED BY '${MYSQL_PWD}';" > /tmp/root-pass-sql
+  DEFAULT_PASSWORD=$(grep 'A temporary password' /var/log/mysqld.log | awk '{print $NF}')
+  cat /tmp/root-pass-sql  | mysql --connect-expired-password -uroot -p"${DEFAULT_PASSWORD}" &>>$LOG
+  stat $? 
+fi
 
-#If the exit code is non-zero then only I want to execute, if not, I would like to skip 
-echo show databases | mysql -uroot -pRoboShop@1 &>> ${LOGFILE}
-if [ $? -ne 0 ]; then 
-    echo -n "Reset Root Password: "
-    echo "ALTER USER 'root'@'localhost' IDENTIFIED BY 'RoboShop@1';" | mysql --connect-expired-password  -uroot -p"${DEFAULT_ROOT_PASSWORD}" &>> ${LOGFILE}
-    stat $? 
-fi 
+echo -e "Removing Password Validate Plugin : "
+echo "show plugins" |  mysql -uroot -p${MYSQL_PWD} | grep validate_password &>>$LOG
+if [ $? -eq 0 ]; then
+  echo " uninstall plugin validate_password;" | mysql -uroot -p${MYSQL_PWD}   &>>$LOG
+  stat $? 
+fi
 
-echo 'show plugins;' | mysql -uroot -pRoboShop@1 | grep validate_password &>> ${LOGFILE}
-if [ $? -eq 0 ] ; then 
-    echo -n "Uninstalling the password validate plugin :"
-    echo  "uninstall plugin validate_password;" | mysql -uroot -pRoboShop@1  &>> ${LOGFILE}
-    stat $? 
-fi 
-
-echo -n "Downloading the schema:"
+echo -n "Downloading the $COMPONENT Schema:"
 cd /tmp 
-curl -s -L -o /tmp/mysql.zip "https://github.com/stans-robot-project/mysql/archive/main.zip"  &>> ${LOGFILE} && unzip -o /tmp/mysql.zip    &>> ${LOGFILE}
+curl -s -L -o /tmp/mysql.zip "https://github.com/stans-robot-project/$COMPONENT/archive/main.zip"
+unzip -o $COMPONENT.zip &>> $LOGFILE
+stat $?
+
+cd $COMPONENT-main &>>$LOG
+
+echo -n "Injecting the $COMPONENT Schema:"
+mysql -uroot -p${MYSQL_PWD} <shipping.sql &>>$LOG
 stat $? 
 
-echo -n "Injecting the Schema: "
-cd /tmp/mysql-main/
-mysql -u root -pRoboShop@1 <shipping.sql  &>> ${LOGFILE}
-stat $? 
+echo -e "\e[32m __________ $COMPONENT Installation Completed _________ \e[0m"
 
 
-echo -e "\n ************ $Component Installation Completed ******************** \n"
