@@ -2,12 +2,8 @@
 
 source components/common.sh
 COMPONENT=mysql
-MYSQL_PWD=$1
 
-if [ -z "$1" ]; then
-  echo -e "\e[32m Password argument is needed \e[0m"
-  exit 1
-fi
+read -p 'Enter MySQL Password you wish to configure:' MYSQL_PWD
 
 
 echo -n  "Configuring $COMPONENT repo"
