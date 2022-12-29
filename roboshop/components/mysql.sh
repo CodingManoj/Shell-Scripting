@@ -1,11 +1,11 @@
 #!/bin/bash 
 
 COMPONENT=mysql
-MYSQL_PWD=RoboShop1
+# MYSQL_PWD=RoboShop1
 
 source components/common.sh
 
-# read -p 'Enter MySQL Password you wish to configure:' MYSQL_PWD
+read -p 'Enter MySQL Password you wish to configure:' MYSQL_PWD
 
 echo -n "Configuring the $COMPONENT Repo:"
 curl -s -L -o /etc/yum.repos.d/mysql.repo https://raw.githubusercontent.com/stans-robot-project/mysql/main/mysql.repo &>> $LOGFILE 
