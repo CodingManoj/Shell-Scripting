@@ -15,3 +15,8 @@ This is the repository where we are going to learn bash and would like to automa
 
 ### PS: Ensure you are inside the repo to executre the git commands  ; We will perform clone once and pull multiple times
 ### test
+for project in <project_list>; do
+  echo "Project: $project"
+  gcloud projects get-iam-policy $project --format json | \
+    jq -r '.bindings[] | select(.role=="roles/owner") | .members[] | select(startswith("user:")) | [.[] | sub("^user:"; "")] | join(",")'
+done
