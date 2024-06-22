@@ -17,6 +17,9 @@ This is the repository where we are going to learn bash and would like to automa
 ### test
 for project in <project_list>; do
   echo "Project: $project"
-  gcloud projects get-iam-policy $project --format json | \
-    jq -r '.bindings[] | select(.role=="roles/owner") | .members[] | select(startswith("user:")) | [.[] | sub("^user:"; "")] | join(",")'
+  gcloud projects get-iam-policy $project \
+    --flatten="bindings[].members" \
+    --format='value(bindings.members)' \
+    --filter="bindings.role:roles/owner AND bindings.members:user:*" | \
+    awk -F "@" '{print $1","$0}'
 done
